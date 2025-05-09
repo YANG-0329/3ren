@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>仓库工人工作动画</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        warehouse: '#1E40AF',
+                        warehouseDark: '#16307a',
+                        warehouseLight: '#254edb',
+                        worker: '#F59E0B',
+                        progress: '#10B981',
+                        face: '#FFE4B5',
+                        hair: '#2D3748',
+                        features: '#718096',
+                        roof: '#78350F',
+                        roofDark: '#5c290a',
+                        window: '#bfdbfe',
+                        ground: '#d1d5db',
+                        shadow: 'rgba(0, 0, 0, 0.15)',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .warehouse-shadow {
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            }
+            .bounce-slow {
+                animation: bounce 1.5s infinite;
+            }
+            .bounce-medium {
+                animation: bounce 1s infinite;
+            }
+            .bounce-fast {
+                animation: bounce 0.7s infinite;
+            }
+            @keyframes bounce {
+                0%, 100% {
+                    transform: translateY(0);
+                }
+                50% {
+                    transform: translateY(-10px);
+                }
+            }
+            
+            /* 3D仓库样式 */
+            .warehouse-container {
+                perspective: 1000px;
+            }
+            
+            /* 仓库主体 */
+            .warehouse-building {
+                position: relative;
+                height: 220px;
+                border-radius: 8px 8px 0 0;
+                background: linear-gradient(135deg, #1E40AF 0%, #254edb 100%);
+                padding: 1rem;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                transform-style: preserve-3d;
+                transform: rotateX(5deg);
+                box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.2);
+            }
+            
+            /* 增强型房顶样式 */
+            .roof {
+                width: 0;
+                height: 0;
+                border-left: 80px solid transparent;
+                border-right: 80px solid transparent;
+                border-bottom: 40px solid #78350F;
+                position: absolute;
+                top: -40px;
+                left: 50%;
+                transform: translateX(-50%);
+                z-index: 1;
+                filter: drop-shadow(0 4px 3px rgba(0, 0, 0, 0.15));
+            }
+            
+            .roof::before {
+                content: '';
+                position: absolute;
+                top: 2px;
+                left: -78px;
+                border-left: 78px solid transparent;
+                border-right: 78px solid transparent;
+                border-bottom: 38px solid #5c290a;
+                z-index: -1;
+            }
+            
+            /* 房顶标注 */
+            .roof-label {
+                position: absolute;
+                top: -35px;
+                left: 50%;
+                transform: translateX(-50%);
+                color: white;
+                font-weight: bold;
+                font-size: 1.2rem;
+                z-index: 2;
+                text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+            }
+            
+            /* 增强型窗户样式 */
+            .window {
+                width: 40px;
+                height: 40px;
+                background: linear-gradient(135deg, #bfdbfe 0%, #dbeafe 100%);
+                border: 2px solid #1E40AF;
+                border-radius: 4px;
+                margin: 0.5rem;
+                display: inline-block;
+                box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+                position: relative;
+            }
+            
+            .window::after {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 50%;
+                width: 1px;
+                height: 100%;
+                background-color: rgba(30, 64, 175, 0.3);
+            }
+            
+            .window::before {
+                content: '';
+                position: absolute;
+                top: 50%;
+                left: 0;
+                width: 100%;
+                height: 1px;
+                background-color: rgba(30, 64, 175, 0.3);
+            }
+            
+            /* 增强型门样式 */
+            .door {
+                width: 40px;
+                height: 60px;
+                background: linear-gradient(90deg, #78350F 0%, #92400E 100%);
+                border-radius: 4px 4px 0 0;
+                position: absolute;
+                bottom: 0;
+                left: 50%;
+                transform: translateX(-50%);
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            }
+            
+            .door-handle {
+                position: absolute;
+                top: 50%;
+                right: 15%;
+                width: 5px;
+                height: 5px;
+                background-color: #d4af37;
+                border-radius: 50%;
+            }
+            
+            /* 增强型工人人形样式 */
+            .worker {
+                position: relative;
+                width: 60px;
+                height: 80px;
+                perspective: 1000px;
+            }
+            
+            .worker-body {
+                position: relative;
+                width: 30px;
+                height: 40px;
+                background: linear-gradient(to right, #F59E0B 45%, #E69138 55%);
+                margin: 5px auto 0;
+                border-radius: 6px;
+                transform-style: preserve-3d;
+                transform: rotateY(15deg);
+                box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.2);
+            }
+            
+            .worker-head {
+                position: relative;
+                width: 30px;
+                height: 30px;
+                background: linear-gradient(135deg, #FFE4B5 0%, #f8d7da 100%);
+                border-radius: 50%;
+                margin: 0 auto;
+                transform-style: preserve-3d;
+                transform: rotateY(15deg);
+                box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.2);
+                z-index: 1;
+            }
+            
+            /* 面部特征 */
+            .worker-eyes {
+                position: absolute;
+                top: 10px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 20px;
+                display: flex;
+                justify-content: space-between;
+            }
+            
+            .worker-eye {
+                width: 4px;
+                height: 4px;
+                background-color: #2D3748;
+                border-radius: 50%;
+                box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+            }
+            
+            .worker-nose {
+                position: absolute;
+                top: 15px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 3px;
+                height: 5px;
+                background-color: #F08080;
+                border-radius: 30%;
+            }
+            
+            .worker-mouth {
+                position: absolute;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 10px;
+                height: 2px;
+                background-color: #2D3748;
+                border-radius: 50%;
+            }
+            
+            /* 头发样式 */
+            .worker-hair {
+                position: absolute;
+                top: -2px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 30px;
+                height: 10px;
+                background-color: #2D3748;
+                border-radius: 50% 50% 0 0;
+            }
+            
+            .worker-hair-male {
+                border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+            }
+            
+            .worker-hair-female {
+                height: 12px;
+                border-radius: 50% 50% 0 0;
+            }
+            
+            /* 手臂样式 */
+            .worker-arms {
+                position: absolute;
+                top: 35px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 50px;
+                height: 8px;
+                display: flex;
+                justify-content: space-between;
+            }
+            
+            .worker-arm {
+                width: 20px;
+                height: 8px;
+                background: linear-gradient(to right, #F59E0B 45%, #E69138 55%);
+                border-radius: 4px;
+                transform: rotate(-10deg);
+            }
+            
+            /* 腿部样式 */
+            .worker-legs {
+                position: absolute;
+                bottom: 0;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 30px;
+                height: 20px;
+                display: flex;
+                justify-content: space-between;
+            }
+            
+            .worker-leg {
+                width: 10px;
+                height: 20px;
+                background: linear-gradient(to right, #F59E0B 45%, #E69138 55%);
+                border-radius: 5px;
+            }
+            
+            /* 工人标签 */
+            .worker-label {
+                position: absolute;
+                top: -25px;
+                left: 50%;
+                transform: translateX(-50%);
+                background-color: rgba(0, 0, 0, 0.7);
+                color: white;
+                font-size: 0.8rem;
+                padding: 3px 8px;
+                border-radius: 4px;
+                white-space: nowrap;
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+                transition: all 0.3s ease;
+            }
+            
+            .worker:hover .worker-label {
+                transform: translate(-50%, -5px);
+                box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+            }
+            
+            /* 进度条样式 */
+            .progress-bar {
+                height: 100%;
+                transition: width 0.1s linear;
+                background: linear-gradient(90deg, #10B981 0%, #34D399 100%);
+                box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);
+            }
+            
+            /* 仓库底部阴影 */
+            .warehouse-floor {
+                position: absolute;
+                bottom: -10px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 200px;
+                height: 20px;
+                background: radial-gradient(ellipse at center, rgba(0,0,0,0.15) 0%,rgba(0,0,0,0) 70%);
+                border-radius: 50%;
+                z-index: -1;
+            }
+            
+            /* 地面纹理 */
+            .ground-texture {
+                position: absolute;
+                bottom: -10px;
+                left: 0;
+                right: 0;
+                height: 20px;
+                background-image: repeating-linear-gradient(90deg, #d1d5db, #d1d5db 10px, #e5e7eb 10px, #e5e7eb 20px);
+                opacity: 0.3;
+                z-index: -1;
+            }
+            
+            /* 仓库门动画 */
+            @keyframes door-open {
+                0% { transform: translateX(-50%) scaleX(1); }
+                100% { transform: translateX(-50%) scaleX(0.8); }
+            }
+            
+            .door-opening {
+                animation: door-open 0.5s ease forwards;
+            }
+            
+            /* 工人进入动画 */
+            @keyframes worker-enter {
+                0% { transform: translateY(20px) scale(0.8); opacity: 0; }
+                100% { transform: translateY(0) scale(1); opacity: 1; }
+            }
+            
+            .worker-enter {
+                animation: worker-enter 0.5s ease forwards;
+            }
+            
+            /* 工人工作动画 */
+            @keyframes worker-work {
+                0%, 100% { transform: translateY(0) rotateY(15deg); }
+                50% { transform: translateY(-5px) rotateY(15deg); }
+            }
+            
+            .worker-working {
+                animation: worker-work 0.8s ease-in-out infinite;
+            }
+            
+            /* 工人手臂动画 */
+            @keyframes arm-move {
+                0%, 100% { transform: rotate(-10deg); }
+                50% { transform: rotate(10deg); }
+            }
+            
+            .worker-arm-moving {
+                animation: arm-move 0.6s ease-in-out infinite;
+            }
+            
+            /* 窗户反光效果 */
+            .window-reflection {
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 50%);
+                pointer-events: none;
+            }
+            /* 完工提示样式 */
+            #completedMessage {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 50;
+                opacity: 0;
+                transition: opacity 1s;
+                pointer-events: none;
+            }
+            #completedMessage div {
+                font-size: clamp(2rem, 5vw, 4rem);
+                font-weight: bold;
+                color: red;
+                font-family: KaiTi, 'Noto Serif SC', serif;
+                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-50 to-slate-200 min-h-screen p-4 md:p-8 flex flex-col items-center justify-center">
+    <div class="max-w-6xl w-full bg-white rounded-2xl shadow-xl overflow-hidden p-6 md:p-10">
+        <!-- 修改标题 -->
+        <h1 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-slate-800 mb-8 text-center">三人两仓型</h1>
+        
+        <div class="flex flex-col md:flex-row gap-8 mb-8">
+            <div class="warehouse-container flex-1 relative">
+                <!-- 仓库A结构 -->
+                <div class="relative">
+                    <!-- 房顶 -->
+                    <div class="roof"></div>
+                    <div class="roof-label">仓库A</div>
+                    
+                    <!-- 仓库主体 -->
+                    <div class="warehouse-building warehouse-shadow">
+                        <!-- 窗户 -->
+                        <div class="flex justify-center mt-4">
+                            <div class="window">
+                                <div class="window-reflection"></div>
+                            </div>
+                            <div class="window ml-8">
+                                <div class="window-reflection"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- 门 -->
+                        <div class="door" id="doorA">
+                            <div class="door-handle"></div>
+                        </div>
+                        
+                        <!-- 地面纹理 -->
+                        <div class="ground-texture"></div>
+                        
+                        <!-- 工人区域 -->
+                        <div class="absolute bottom-16 left-0 right-0 flex justify-center gap-8">
+                            <div id="workerA1" class="worker bounce-medium">
+                                <div class="worker-head">
+                                    <div class="worker-eyes">
+                                        <div class="worker-eye"></div>
+                                        <div class="worker-eye"></div>
+                                    </div>
+                                    <div class="worker-nose"></div>
+                                    <div class="worker-mouth"></div>
+                                    <div class="worker-hair worker-hair-male"></div>
+                                </div>
+                                <div class="worker-body"></div>
+                                <div class="worker-arms">
+                                    <div class="worker-arm worker-arm-moving"></div>
+                                    <div class="worker-arm worker-arm-moving"></div>
+                                </div>
+                                <div class="worker-legs">
+                                    <div class="worker-leg"></div>
+                                    <div class="worker-leg"></div>
+                                </div>
+                                <div class="worker-label">甲</div>
+                            </div>
+                            <div id="workerA2" class="worker bounce-slow opacity-1">
+                                <div class="worker-head">
+                                    <div class="worker-eyes">
+                                        <div class="worker-eye"></div>
+                                        <div class="worker-eye"></div>
+                                    </div>
+                                    <div class="worker-nose"></div>
+                                    <div class="worker-mouth"></div>
+                                    <div class="worker-hair worker-hair-male"></div>
+                                </div>
+                                <div class="worker-body"></div>
+                                <div class="worker-arms">
+                                    <div class="worker-arm worker-arm-moving"></div>
+                                    <div class="worker-arm worker-arm-moving"></div>
+                                </div>
+                                <div class="worker-legs">
+                                    <div class="worker-leg"></div>
+                                    <div class="worker-leg"></div>
+                                </div>
+                                <div class="worker-label">丙</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 仓库底部阴影 -->
+                    <div class="warehouse-floor"></div>
+                    
+                    <!-- 进度条 -->
+                    <div class="mt-4 relative h-6 bg-slate-200 rounded-full overflow-hidden">
+                        <div id="progressA" class="absolute top-0 left-0 h-full bg-progress progress-bar" style="width: 0%"></div>
+                    </div>
+                    <div class="flex justify-between mt-2">
+                        <h2 class="text-lg font-bold text-slate-800">仓库A</h2>
+                        <span id="progressA-text" class="text-slate-700 font-medium">0%</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="warehouse-container flex-1 relative">
+                <!-- 仓库B结构 -->
+                <div class="relative">
+                    <!-- 房顶 -->
+                    <div class="roof"></div>
+                    <div class="roof-label">仓库B</div>
+                    
+                    <!-- 仓库主体 -->
+                    <div class="warehouse-building warehouse-shadow">
+                        <!-- 窗户 -->
+                        <div class="flex justify-center mt-4">
+                            <div class="window">
+                                <div class="window-reflection"></div>
+                            </div>
+                            <div class="window ml-8">
+                                <div class="window-reflection"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- 门 -->
+                        <div class="door" id="doorB">
+                            <div class="door-handle"></div>
+                        </div>
+                        
+                        <!-- 地面纹理 -->
+                        <div class="ground-texture"></div>
+                        
+                        <!-- 工人区域 -->
+                        <div class="absolute bottom-16 left-0 right-0 flex justify-center gap-8">
+                            <div id="workerB1" class="worker bounce-fast opacity-0">
+                                <div class="worker-head">
+                                    <div class="worker-eyes">
+                                        <div class="worker-eye"></div>
+                                        <div class="worker-eye"></div>
+                                    </div>
+                                    <div class="worker-nose"></div>
+                                    <div class="worker-mouth"></div>
+                                    <div class="worker-hair worker-hair-female"></div>
+                                </div>
+                                <div class="worker-body"></div>
+                                <div class="worker-arms">
+                                    <div class="worker-arm worker-arm-moving"></div>
+                                    <div class="worker-arm worker-arm-moving"></div>
+                                </div>
+                                <div class="worker-legs">
+                                    <div class="worker-leg"></div>
+                                    <div class="worker-leg"></div>
+                                </div>
+                                <div class="worker-label">乙</div>
+                            </div>
+                            <div id="workerB2" class="worker bounce-slow opacity-0">
+                                <div class="worker-head">
+                                    <div class="worker-eyes">
+                                        <div class="worker-eye"></div>
+                                        <div class="worker-eye"></div>
+                                    </div>
+                                    <div class="worker-nose"></div>
+                                    <div class="worker-mouth"></div>
+                                    <div class="worker-hair worker-hair-male"></div>
+                                </div>
+                                <div class="worker-body"></div>
+                                <div class="worker-arms">
+                                    <div class="worker-arm worker-arm-moving"></div>
+                                    <div class="worker-arm worker-arm-moving"></div>
+                                </div>
+                                <div class="worker-legs">
+                                    <div class="worker-leg"></div>
+                                    <div class="worker-leg"></div>
+                                </div>
+                                <div class="worker-label">丙</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 仓库底部阴影 -->
+                    <div class="warehouse-floor"></div>
+                    
+                    <!-- 进度条 -->
+                    <div class="mt-4 relative h-6 bg-slate-200 rounded-full overflow-hidden">
+                        <div id="progressB" class="absolute top-0 left-0 h-full bg-progress progress-bar" style="width: 0%"></div>
+                    </div>
+                    <div class="flex justify-between mt-2">
+                        <h2 class="text-lg font-bold text-slate-800">仓库B</h2>
+                        <span id="progressB-text" class="text-slate-700 font-medium">0%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="text-center">
+            <button id="startBtn" class="bg-primary hover:bg-primary/90 text-white font-medium py-3 px-8 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                开始演示
+            </button>
+        </div>
+    </div>
+    
+    <!-- 完工提示 -->
+    <div id="completedMessage">
+        <div>我们同时完工了！</div>
+    </div>
+
+    <div class="mt-8 text-center text-slate-600 text-sm">
+        <p>演示说明：</p>
+        <p>1. 甲丙先在A仓库干活，乙在B仓库干活</p>
+        <p>2. 甲继续在A仓库干活，乙丙在B仓库干活</p>
+        <p>3. 两个仓库同时完成工作</p>
+        <p>4. 单独工作时，甲需12秒，乙需10秒，丙需15秒完成</p>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const startBtn = document.getElementById('startBtn');
+            const progressA = document.getElementById('progressA');
+            const progressB = document.getElementById('progressB');
+            const progressAtext = document.getElementById('progressA-text');
+            const progressBtext = document.getElementById('progressB-text');
+            const workerA1 = document.getElementById('workerA1');
+            const workerA2 = document.getElementById('workerA2');
+            const workerB1 = document.getElementById('workerB1');
+            const workerB2 = document.getElementById('workerB2');
+            const doorA = document.getElementById('doorA');
+            const doorB = document.getElementById('doorB');
+            const completedMessage = document.getElementById('completedMessage');
+            
+            let animationStarted = false;
+            let animationInterval;
+            
+            // 工效 (单位: 每秒完成量)
+            const efficiency = {
+                甲: 1/12,  // 甲单独完成需要12秒
+                乙: 1/10,  // 乙单独完成需要10秒
+                丙: 1/15   // 丙单独完成需要15秒
+            };
+            
+            // 计算最佳阶段时间分配，使两个仓库同时完成
+            // 设第一阶段时间为t1，第二阶段时间为t2
+            // 仓库A的总进度: (甲+丙)*t1 + 甲*t2 = 1
+            // 仓库B的总进度: 乙*t1 + (乙+丙)*t2 = 1
+            // 解方程组得到 t1 = 4.5秒, t2 = 3秒
+            const PHASE1_TIME = 4500; // 第一阶段时间
+            const PHASE2_TIME = 3000; // 第二阶段时间
+            const TOTAL_TIME = PHASE1_TIME + PHASE2_TIME; // 总时间
+            
+            startBtn.addEventListener('click', function() {
+                if (animationStarted) {
+                    resetAnimation();
+                }
+                startBtn.textContent = '重置演示';
+                animationStarted = true;
+                
+                // 重置进度条
+                progressA.style.width = '0%';
+                progressB.style.width = '0%';
+                progressAtext.textContent = '0%';
+                progressBtext.textContent = '0%';
+                
+                // 重置工人位置和动画
+                workerA1.classList.add('bounce-medium', 'worker-working');
+                workerA2.classList.add('bounce-slow', 'worker-working');
+                workerB1.classList.add('bounce-fast', 'worker-working');
+                workerB2.classList.remove('bounce-slow', 'worker-working');
+                
+                workerA2.style.opacity = '1';
+                workerB1.style.opacity = '0';
+                workerB2.style.opacity = '0';
+                
+                // 添加门动画
+                doorA.classList.add('door-opening');
+                doorB.classList.add('door-opening');
+                
+                // 让乙进入B仓库
+                setTimeout(() => {
+                    workerB1.style.opacity = '1';
+                    workerB1.classList.add('worker-enter');
+                }, 500);
+                
+                // 计算各阶段工作效率和进度
+                const phase1A = (efficiency.甲 + efficiency.丙) * (PHASE1_TIME / 1000);
+                const phase1B = efficiency.乙 * (PHASE1_TIME / 1000);
+                const phase2A = efficiency.甲 * (PHASE2_TIME / 1000);
+                const phase2B = (efficiency.乙 + efficiency.丙) * (PHASE2_TIME / 1000);
+                
+                // 动画更新间隔（毫秒）
+                const updateInterval = 100;
+                const stepsPhase1 = PHASE1_TIME / updateInterval;
+                const stepsPhase2 = PHASE2_TIME / updateInterval;
+                
+                let currentStep = 0;
+                let currentPhase = 1;
+                
+                // 清除之前的间隔（如果有）
+                if (animationInterval) clearInterval(animationInterval);
+                
+                animationInterval = setInterval(() => {
+                    if (currentPhase === 1) {
+                        // 第一阶段
+                        currentStep++;
+                        
+                        // 计算当前进度百分比
+                        const percentA = Math.min(Math.round(((phase1A / stepsPhase1) * currentStep) * 100), Math.round(phase1A * 100));
+                        const percentB = Math.min(Math.round(((phase1B / stepsPhase1) * currentStep) * 100), Math.round(phase1B * 100));
+                        
+                        // 更新进度条和文本
+                        progressA.style.width = `${percentA}%`;
+                        progressB.style.width = `${percentB}%`;
+                        progressAtext.textContent = `${percentA}%`;
+                        progressBtext.textContent = `${percentB}%`;
+                        
+                        // 检查是否完成第一阶段
+                        if (currentStep >= stepsPhase1) {
+                            currentPhase = 2;
+                            currentStep = 0;
+                            
+                            // 切换工人
+                            workerA2.style.opacity = '0';
+                            workerB2.style.opacity = '1';
+                            workerB2.classList.add('bounce-slow', 'worker-enter', 'worker-working');
+                        }
+                    } else if (currentPhase === 2) {
+                        // 第二阶段
+                        currentStep++;
+                        
+                        // 计算当前进度百分比（基于第一阶段的结果）
+                        const basePercentA = Math.round(phase1A * 100);
+                        const basePercentB = Math.round(phase1B * 100);
+                        const addedPercentA = Math.min(Math.round(((phase2A / stepsPhase2) * currentStep) * 100), Math.round(phase2A * 100));
+                        const addedPercentB = Math.min(Math.round(((phase2B / stepsPhase2) * currentStep) * 100), Math.round(phase2B * 100));
+                        
+                        const percentA = basePercentA + addedPercentA;
+                        const percentB = basePercentB + addedPercentB;
+                        
+                        // 更新进度条和文本
+                        progressA.style.width = `${percentA}%`;
+                        progressB.style.width = `${percentB}%`;
+                        progressAtext.textContent = `${percentA}%`;
+                        progressBtext.textContent = `${percentB}%`;
+                        
+                        // 检查是否完成第二阶段
+                        if (currentStep >= stepsPhase2) {
+                            // 动画完成
+                            clearInterval(animationInterval);
+                            
+                            // 确保进度条到达100%
+                            progressA.style.width = '100%';
+                            progressB.style.width = '100%';
+                            progressAtext.textContent = '100%';
+                            progressBtext.textContent = '100%';
+                            
+                            // 停止所有工人的跳动动画
+                            workerA1.classList.remove('bounce-medium', 'worker-working');
+                            workerA2.classList.remove('bounce-slow', 'worker-working');
+                            workerB1.classList.remove('bounce-fast', 'worker-working');
+                            workerB2.classList.remove('bounce-slow', 'worker-working');
+                            
+                            // 关闭门
+                            doorA.classList.remove('door-opening');
+                            doorB.classList.remove('door-opening');
+                            
+                            // 显示完工提示
+                            setTimeout(() => {
+                                completedMessage.style.opacity = 1;
+                            }, 500);
+                            
+                            startBtn.textContent = '重新开始';
+                        }
+                    }
+                }, updateInterval);
+            });
+            
+            function resetAnimation() {
+                // 清除动画间隔
+                if (animationInterval) clearInterval(animationInterval);
+                
+                // 重置进度条
+                progressA.style.width = '0%';
+                progressB.style.width = '0%';
+                progressAtext.textContent = '0%';
+                progressBtext.textContent = '0%';
+                
+                // 重置工人位置和动画
+                workerA1.classList.remove('bounce-medium', 'worker-working', 'worker-enter');
+                workerA2.classList.remove('bounce-slow', 'worker-working', 'worker-enter');
+                workerB1.classList.remove('bounce-fast', 'worker-working', 'worker-enter');
+                workerB2.classList.remove('bounce-slow', 'worker-working', 'worker-enter');
+                
+                workerA2.style.opacity = '1';
+                workerB1.style.opacity = '0';
+                workerB2.style.opacity = '0';
+                
+                // 重置门
+                doorA.classList.remove('door-opening');
+                doorB.classList.remove('door-opening');
+                
+                // 隐藏完工提示
+                completedMessage.style.opacity = 0;
+                
+                // 重置按钮文本
+                startBtn.textContent = '开始演示';
+                animationStarted = false;
+            }
+        });
+    </script>
+</body>
+</html>
